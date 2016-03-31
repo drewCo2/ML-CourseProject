@@ -1,0 +1,108 @@
+```{r echo=FALSE}
+
+library(caret)
+library(ggplot2)
+
+```
+
+
+```{r echo=FALSE}
+# Cleanup..
+rm(list=ls())
+
+getData<-function(path, url)
+{
+  res<-NULL
+  if (!file.exists(path))
+  {
+    res<-download.file(url, path)
+  }
+  res<-read.csv(path)
+  res
+}
+
+# Get a copy of the train / test data that we are going to use.
+trainData<-getData('pml-training.csv', 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv')
+testData<-getData('pml-testing.csv', 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv')
+
+```
+
+
+```{r}
+
+
+# http://groupware.les.inf.puc-rio.br/har
+# We are working with the weight lifting exercise set.
+# This is where we can get info about the data so that we can appropriately analyze + interpret it.
+
+#hist(as.numeric(trainData$classe))
+#plot(trainData$classe)
+
+
+
+
+
+```
+
+We need to estimate our out of sample error rate.  The out of sample error rate is the error rate that we receive on the final testing set.  In order to estimate this, we will break our initial training set into further training and test sets.
+
+```{r}
+
+# The ol' 80/20 split shoud suffice.
+ti<-createDataPartition(trainData$classe, p=0.8, list=FALSE)
+
+subTrain <- trainData[ti,]
+subTest <- trainData[-ti,]
+
+```
+
+To train our model, we will be using the Random Forest approach.  The Random Forest is well known as being a very effective machine learning technique, and is appropriate for predicting class labels (factors) which we intend to do in this exercise.
+
+However, before we begin, we will want to be sure to identify and remove any predictors in our data set that may not contribute to our model.  Fewer predictors will also help to improve our processing time.  Since the data is mostly continuous, we will be identifying and removing those predictors that are mostly NA, have little variance, or have little meaning for our analysis.
+
+```{r}
+
+# We will have to perform these transforms on any other data set that we test against, so a reusable function is the best approach.
+
+# First the predictors with near zero variance.
+zeroVars = nearZeroVar(subTrain, saveMetrics = TRUE)$nzv
+
+# Then we wil identify the cols that are mostly NA.
+naVars = apply(subTrain, MARGIN = 2, function(x) mean(is.na(x)) > 0.95)
+naVars<- unname(naVars)
+
+# Based on the description of the data, we will be dropping the timestamp variables since they won't
+# be indicative of how someone performs their exercise.
+# We also remove the 'X' predictor since this is just an index.
+dropVars = which(names(subTrain) %in% c('X','cvtd_timestamp', 'raw_timestamp_part_1', 'raw_timestamp_part_2', 'user_name'))
+
+
+# We compose our final set of indexes by merging our info from above.  
+trimCols<-zeroVars
+trimCols[which(naVars)] = TRUE
+trimCols[dropVars] = TRUE
+
+#We invert it so that we are sure to keep entries that aren't selected for removal (FALSE)
+#This is the approach we will use for the remainder of our data.
+subTrain2 = subTrain[,!trimCols]
+
+
+```
+
+Now we train our model, which includes cross validation.  We are going to use the **train** function from the **caret** package to perform this.  We are also going to be using k-fold cross validation which we will configure before the training operation begins.
+
+
+```{r}
+
+
+tc <- trainControl(method="cv", number=5, verboseIter=F)
+fit <- train(classe ~ ., data=subTrain2, method="rf", trControl=tc)
+
+```
+
+
+```{r}
+
+```
+
+
