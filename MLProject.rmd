@@ -5,6 +5,7 @@ library(ggplot2)
 
 ```
 
+# http://groupware.les.inf.puc-rio.br/har
 
 ```{r echo=FALSE}
 # Cleanup..
@@ -30,18 +31,6 @@ testData<-getData('pml-testing.csv', 'https://d396qusza40orc.cloudfront.net/pred
 
 ```{r}
 
-
-# http://groupware.les.inf.puc-rio.br/har
-# We are working with the weight lifting exercise set.
-# This is where we can get info about the data so that we can appropriately analyze + interpret it.
-
-#hist(as.numeric(trainData$classe))
-#plot(trainData$classe)
-
-
-
-
-
 ```
 
 We need to estimate our out of sample error rate.  The out of sample error rate is the error rate that we receive on the final testing set.  In order to estimate this, we will break our initial training set into further training and test sets.
@@ -56,9 +45,10 @@ subTest <- trainData[-ti,]
 
 ```
 
-To train our model, we will be using the Random Forest approach.  The Random Forest is well known as being a very effective machine learning technique, and is appropriate for predicting class labels (factors) which we intend to do in this exercise.
 
-However, before we begin, we will want to be sure to identify and remove any predictors in our data set that may not contribute to our model.  Fewer predictors will also help to improve our processing time.  Since the data is mostly continuous, we will be identifying and removing those predictors that are mostly NA, have little variance, or have little meaning for our analysis.
+
+###Feature Selection
+Before we begin, we will want to be sure to identify and remove any predictors in our data set that may not contribute to our model.  Fewer predictors will also help to improve our processing time.  Since the data is mostly continuous, we will be identifying and removing those predictors that are mostly NA, have little variance, or have little meaning for our analysis.
 
 ```{r}
 
@@ -83,26 +73,43 @@ trimCols[which(naVars)] = TRUE
 trimCols[dropVars] = TRUE
 
 #We invert it so that we are sure to keep entries that aren't selected for removal (FALSE)
-#This is the approach we will use for the remainder of our data.
+#This is the approach we will use for the remainder of our data.  May as well set them all up now.
 subTrain2 = subTrain[,!trimCols]
-
+subTest2 = subTest[,!trimCols]
+test2 = testData[,!trimCols]
 
 ```
 
-Now we train our model, which includes cross validation.  We are going to use the **train** function from the **caret** package to perform this.  We are also going to be using k-fold cross validation which we will configure before the training operation begins.
+###Model Training
+To train our model, we will be using the Random Forest approach.  The Random Forest is well known as being a very effective machine learning technique, and is appropriate for predicting class labels (factors) which we intend to do in this exercise.  We are going to use the **train** function from the **caret** package to perform this.  We are also going to be using k-fold cross validation which we will configure before the training operation begins.
+
+
+```{r, cache=TRUE}
+
+# We will use three folds, which should be sufficient.  More folds may increase accuracy, but will lead to much longer processing times.
+tc <- trainControl(method="cv", number=3, verboseIter=F)
+model <- train(classe~., data=subTrain2, method="rf", trControl=tc)
+
+```
+
+Once we have created our model, we can run a prediciton on our test set, and compute our out of sample error, which is also our estimate for our final test set.
+```{r}
+
+# predicted
+pv <- predict(model, subTest2)
+
+# logical array of predicted values that match the actual values.
+mv <- pv == subTest2$classe
+
+predErr <- 1-(sum(mv) / length(mv))
+
+```
+
+
+We can see that our computed out of sample error rate is very small, at `r round(predErr*100,2)`%  It appears that we have trained a very accurate model.  Of course, the actual error rate that we receive on our real test set will likely be higher.
 
 
 ```{r}
 
 
-tc <- trainControl(method="cv", number=5, verboseIter=F)
-fit <- train(classe ~ ., data=subTrain2, method="rf", trControl=tc)
-
 ```
-
-
-```{r}
-
-```
-
-
