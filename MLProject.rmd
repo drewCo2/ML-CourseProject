@@ -1,3 +1,18 @@
+#Weight Lifting Data Analysis & Prediction  
+Andrew A. Ritz  
+March, 2016
+
+####Introduction
+In recent years, various groups have been collecting data from accelerometers and other wearable devices and using that information to analyze people's behaviour and activity while they wear them.  In particular, the [Human Activity Recognition](http://groupware.les.inf.puc-rio.br/har) project has been collecting and publishing data in order to analyze the efficacy of certain weight lifting exercises.  
+
+This data contains information collected from various sensors attached to the participant's body, while they performed various weight lifting exercises.  The exercises were supervised by a professional, and were rated based on their performance, which is stored in the **classe** variable of the dataset.  For this dataset, class *A* refers to correct execution of the exercise, while the other 4 classes *B-E* indicate some common mistake.  More information about this dataset can be found at the [project's website](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises).
+
+
+####Purpose & Goals
+The purpose of this exercise is to use the set of weight lifting data, to develop a machine learning model that can then be used to make predictions about new data collected from these sensors at a future date.  If our model is successful we could use it to automate the grading of performed exercises, rather than relying on a human professional.  We can also use it to pass the quiz at the the end of the course :)
+
+
+
 ```{r echo=FALSE}
 
 library(caret)
@@ -5,7 +20,9 @@ library(ggplot2)
 
 ```
 
-# http://groupware.les.inf.puc-rio.br/har
+
+### Data Acquisition
+Before we can analyze and build our model, we must acquire the data.  We will be downloading this from the internet at the specified locations below.  We will be acquiring a training set (large) and a test set (small).
 
 ```{r echo=FALSE}
 # Cleanup..
@@ -23,6 +40,7 @@ getData<-function(path, url)
 }
 
 # Get a copy of the train / test data that we are going to use.
+# We use our downloader function so we don't have to grab it each time.
 trainData<-getData('pml-training.csv', 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv')
 testData<-getData('pml-testing.csv', 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv')
 
@@ -33,7 +51,8 @@ testData<-getData('pml-testing.csv', 'https://d396qusza40orc.cloudfront.net/pred
 
 ```
 
-We need to estimate our out of sample error rate.  The out of sample error rate is the error rate that we receive on the final testing set.  In order to estimate this, we will break our initial training set into further training and test sets.
+####Error Prediction
+We need to estimate our *out of sample* error rate.  The out of sample error rate is the error rate that we receive on the final testing set.  In order to estimate this, we will break our initial training set into further training and test sets.
 
 ```{r}
 
@@ -47,7 +66,7 @@ subTest <- trainData[-ti,]
 
 
 
-###Feature Selection
+####Feature Selection
 Before we begin, we will want to be sure to identify and remove any predictors in our data set that may not contribute to our model.  Fewer predictors will also help to improve our processing time.  Since the data is mostly continuous, we will be identifying and removing those predictors that are mostly NA, have little variance, or have little meaning for our analysis.
 
 ```{r}
@@ -80,8 +99,8 @@ test2 = testData[,!trimCols]
 
 ```
 
-###Model Training
-To train our model, we will be using the Random Forest approach.  The Random Forest is well known as being a very effective machine learning technique, and is appropriate for predicting class labels (factors) which we intend to do in this exercise.  We are going to use the **train** function from the **caret** package to perform this.  We are also going to be using k-fold cross validation which we will configure before the training operation begins.
+####Model Training
+To train our model, we will be using the Random Forest approach.  The Random Forest is well known for being a very effective machine learning technique, and is appropriate for predicting class labels (factors) which we intend to do in this exercise.  We are going to use the **train** function from the **caret** package to perform this.  We are also going to be using k-fold cross validation which we will configure before the training operation begins.
 
 
 ```{r, cache=TRUE}
@@ -109,7 +128,21 @@ predErr <- 1-(sum(mv) / length(mv))
 We can see that our computed out of sample error rate is very small, at `r round(predErr*100,2)`%  It appears that we have trained a very accurate model.  Of course, the actual error rate that we receive on our real test set will likely be higher.
 
 
+
+####Final Predictions
+As a final step, we will use our model to predict class labels for our test observations.  Please note that with this test set, we have no way of reporting an error rate because the set does not contain the *classe* variable.
+
 ```{r}
+
+#No classe variable.
+message(paste0("Data has 'classe'? ", length(grep("classe",names(test2))) > 0))
+
+final<-predict(model, test2)
+finalRate = sum(final == 'A') / length(final)
+message("Final Predictions")
+final
 
 
 ```
+
+Yikes!  Looks like only `r round(finalRate * 100)`% of the exercises are being performed correctly in our test set if our model is correct.  Maybe we should keep our trainers around a while longer!

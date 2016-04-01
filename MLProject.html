@@ -61,18 +61,34 @@ img {
 
 
 
+<div id="weight-lifting-data-analysis-prediction" class="section level1">
+<h1>Weight Lifting Data Analysis &amp; Prediction</h1>
+<p>Andrew A. Ritz<br />March, 2016</p>
+<div id="introduction" class="section level4">
+<h4>Introduction</h4>
+<p>In recent years, various groups have been collecting data from accelerometers and other wearable devices and using that information to analyze people’s behaviour and activity while they wear them. In particular, the <a href="http://groupware.les.inf.puc-rio.br/har">Human Activity Recognition</a> project has been collecting and publishing data in order to analyze the efficacy of certain weight lifting exercises.</p>
+<p>This data contains information collected from various sensors attached to the participant’s body, while they performed various weight lifting exercises. The exercises were supervised by a professional, and were rated based on their performance, which is stored in the <strong>classe</strong> variable of the dataset. For this dataset, class <em>A</em> refers to correct execution of the exercise, while the other 4 classes <em>B-E</em> indicate some common mistake. More information about this dataset can be found at the <a href="http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises">project’s website</a>.</p>
+</div>
+<div id="purpose-goals" class="section level4">
+<h4>Purpose &amp; Goals</h4>
+<p>The purpose of this exercise is to use the set of weight lifting data, to develop a machine learning model that can then be used to make predictions about new data collected from these sensors at a future date. If our model is successful we could use it to automate the grading of performed exercises, rather than relying on a human professional. We can also use it to pass the quiz at the the end of the course :)</p>
 <pre><code>## Loading required package: lattice
 ## Loading required package: ggplot2</code></pre>
-<div id="httpgroupware.les.inf.puc-rio.brhar" class="section level1">
-<h1><a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a></h1>
-<p>We need to estimate our out of sample error rate. The out of sample error rate is the error rate that we receive on the final testing set. In order to estimate this, we will break our initial training set into further training and test sets.</p>
+</div>
+<div id="data-acquisition" class="section level3">
+<h3>Data Acquisition</h3>
+<p>Before we can analyze and build our model, we must acquire the data. We will be downloading this from the internet at the specified locations below. We will be acquiring a training set (large) and a test set (small).</p>
+<div id="error-prediction" class="section level4">
+<h4>Error Prediction</h4>
+<p>We need to estimate our <em>out of sample</em> error rate. The out of sample error rate is the error rate that we receive on the final testing set. In order to estimate this, we will break our initial training set into further training and test sets.</p>
 <pre class="r"><code># The ol' 80/20 split shoud suffice.
 ti&lt;-createDataPartition(trainData$classe, p=0.8, list=FALSE)
 
 subTrain &lt;- trainData[ti,]
 subTest &lt;- trainData[-ti,]</code></pre>
-<div id="feature-selection" class="section level3">
-<h3>Feature Selection</h3>
+</div>
+<div id="feature-selection" class="section level4">
+<h4>Feature Selection</h4>
 <p>Before we begin, we will want to be sure to identify and remove any predictors in our data set that may not contribute to our model. Fewer predictors will also help to improve our processing time. Since the data is mostly continuous, we will be identifying and removing those predictors that are mostly NA, have little variance, or have little meaning for our analysis.</p>
 <pre class="r"><code># We will have to perform these transforms on any other data set that we test against, so a reusable function is the best approach.
 
@@ -100,21 +116,39 @@ subTrain2 = subTrain[,!trimCols]
 subTest2 = subTest[,!trimCols]
 test2 = testData[,!trimCols]</code></pre>
 </div>
-<div id="model-training" class="section level3">
-<h3>Model Training</h3>
-<p>To train our model, we will be using the Random Forest approach. The Random Forest is well known as being a very effective machine learning technique, and is appropriate for predicting class labels (factors) which we intend to do in this exercise. We are going to use the <strong>train</strong> function from the <strong>caret</strong> package to perform this. We are also going to be using k-fold cross validation which we will configure before the training operation begins.</p>
+<div id="model-training" class="section level4">
+<h4>Model Training</h4>
+<p>To train our model, we will be using the Random Forest approach. The Random Forest is well known for being a very effective machine learning technique, and is appropriate for predicting class labels (factors) which we intend to do in this exercise. We are going to use the <strong>train</strong> function from the <strong>caret</strong> package to perform this. We are also going to be using k-fold cross validation which we will configure before the training operation begins.</p>
 <pre class="r"><code># We will use three folds, which should be sufficient.  More folds may increase accuracy, but will lead to much longer processing times.
 tc &lt;- trainControl(method=&quot;cv&quot;, number=3, verboseIter=F)
 model &lt;- train(classe~., data=subTrain2, method=&quot;rf&quot;, trControl=tc)</code></pre>
 <p>Once we have created our model, we can run a prediciton on our test set, and compute our out of sample error, which is also our estimate for our final test set.</p>
 <pre class="r"><code># predicted
-pv &lt;- predict(model, subTest2)
-
-# logical array of predicted values that match the actual values.
+pv &lt;- predict(model, subTest2)</code></pre>
+<pre><code>## Loading required package: randomForest
+## randomForest 4.6-12
+## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre class="r"><code># logical array of predicted values that match the actual values.
 mv &lt;- pv == subTest2$classe
 
 predErr &lt;- 1-(sum(mv) / length(mv))</code></pre>
-<p>We can see that our computed out of sample error rate is very small, at 0.15% It appears that we have trained a very accurate model. Of course, the actual error rate that we receive on our real test set will likely be higher.</p>
+<p>We can see that our computed out of sample error rate is very small, at 0.03% It appears that we have trained a very accurate model. Of course, the actual error rate that we receive on our real test set will likely be higher.</p>
+</div>
+<div id="final-predictions" class="section level4">
+<h4>Final Predictions</h4>
+<p>As a final step, we will use our model to predict class labels for our test observations. Please note that with this test set, we have no way of reporting an error rate because the set does not contain the <em>classe</em> variable.</p>
+<pre class="r"><code>#No classe variable.
+message(paste0(&quot;Data has 'classe'? &quot;, length(grep(&quot;classe&quot;,names(test2))) &gt; 0))</code></pre>
+<pre><code>## Data has 'classe'? FALSE</code></pre>
+<pre class="r"><code>final&lt;-predict(model, test2)
+finalRate = sum(final == 'A') / length(final)
+message(&quot;Final Predictions&quot;)</code></pre>
+<pre><code>## Final Predictions</code></pre>
+<pre class="r"><code>final</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
+<p>Yikes! Looks like only 35% of the exercises are being performed correctly in our test set if our model is correct. Maybe we should keep our trainers around a while longer!</p>
+</div>
 </div>
 </div>
 
